@@ -1,0 +1,875 @@
+---
+title: "R Project"
+author: "Austin Smith", "Nicholas Vota"
+output: html_notebook
+---
+
+Sudoku Input for the time being -- may decide to design our own if time permits.
+
+```{r}
+library(sudoku)
+puzzle <- fetchSudokuUK()
+typeof(puzzle)
+```
+# Cracking a single row:
+-needs to check container, row, and column for whether the multiplicity of 1-9 is 0 or 1
+-0 = move to next environment (row/column) and 1 = non suitable variable
+-should be hard to explicitly determine which variable, therefore a list of multiple potential variables (1-9) should be generated
+```{r}
+set.seed(42)
+library(sudoku)
+puzzle <- generateSudoku()
+puzzle
+#loop for dividing the board into 3x3 containers contained in an array
+containers <- array(dim= c(3,3,9))
+for(n in 1:3){
+  if(n == 1){
+    for(i in 1:3){
+      containers[,,i] <- puzzle[1:3,((3*i)-2):(3*i)]
+    }
+  } else if(n == 2){
+    for(i in 1:3){
+      containers[,,i+3] <- puzzle[4:6,((3*i)-2):(3*i)]
+    }
+  } else{
+    for(i in 1:3){
+      containers[,,i+6] <- puzzle[7:9,((3*i)-2):(3*i)]
+    }
+  }
+}
+#loop for column and row arrays
+columns <- array(dim=c(1,9,9))
+for(n in 1:9){
+  columns[,,n] <- puzzle[1:9, n]
+}
+rows <- array(dim=c(1,9,9))
+for(n in 1:9){
+  rows[,,n] <- puzzle[n, 1:9]
+}
+#checking for a single varible across a row
+possibility_matrix <- array(dim=c(9,9,9))
+for(i in 1:9){
+  #spliting into container
+  if(i <= 3){
+    #first checking container for optimal efficiency
+    if(sum(containers[,,1] == 1) == 0){
+      
+      if(puzzle[1,i] == 0){
+        
+        if(sum(rows[,,1] == 1) == 0){
+          
+          if(sum(columns[,,i] == 1) == 0){
+            
+            possibility_matrix[1,i,1] = 1
+            
+          } else if(sum(columns[,,i] == 1) == 1){
+            
+            next
+            
+          } else{
+            
+            stop("Error: Multiplicity of a variable has exceeded 1 A")
+            
+          }
+          
+        } else if(sum(rows[,,1] == 1) == 1){
+          
+          next
+          
+        } else {
+      
+          stop("Error: Multiplicity of a variable has exceeded 1 B")
+      
+        }
+        
+      } else{
+    
+        next
+    
+      }
+      
+    } else if(sum(containers[,,1] == 1) == 1){
+      
+      next
+      
+    } else{
+      
+      stop("Error: Multiplicity of a variable has exceeded 1 C")
+      
+    }
+  } else if(i <= 6){
+    
+    if(sum(containers[,,2] == 1) == 0){
+      
+      if(puzzle[1,i] == 0){
+        
+        if(sum(rows[,,1] == 1) == 0){
+          
+          if(sum(columns[,,i] == 1) == 0){
+            
+            possibility_matrix[1,i,1] = 1
+            
+          } else if(sum(columns[,,i] == 1) == 1){
+            
+            next
+            
+          } else{
+            
+            stop("Error: Multiplicity of a variable has exceeded 1 D")
+            
+          }
+          
+        } else if(sum(rows[,,1] == 1) == 1){
+          
+          next
+          
+        } else {
+      
+          stop("Error: Multiplicity of a variable has exceeded 1 E")
+      
+        }
+        
+      } else{
+    
+        next
+    
+      }
+      
+    } else if(sum(containers[,,2] == 1) == 1){
+      
+      next
+      
+    } else{
+      
+      stop("Error: Multiplicity of a variable has exceeded 1 F")
+      
+    }
+    
+  } else{
+    if(sum(containers[,,3] == 1) == 0){
+      
+      if(puzzle[1,i] == 0){
+        
+        if(sum(rows[,,1] == 1) == 0){
+          
+          if(sum(columns[,,i] == 1) == 0){
+            
+            possibility_matrix[1,i,1] = 1
+            
+          } else if(sum(columns[,,i] == 1) == 1){
+            
+            next
+            
+          } else{
+            
+            stop("Error: Multiplicity of a variable has exceeded 1 G")
+            
+          }
+          
+        } else if(sum(rows[,,1] == 1) == 1){
+          
+          next
+          
+        } else {
+      
+          stop("Error: Multiplicity of a variable has exceeded 1 H")
+      
+        }
+        
+      } else{
+    
+        next
+    
+      }
+      
+    } else if(sum(containers[,,3] == 1) == 1){
+      
+      next
+      
+    } else{
+      
+      stop("Error: Multiplicity of a variable has exceeded 1 L")
+      
+    }
+  }
+  
+}
+#This is this spots which can possibly be 1 (1 matrix for each variable), this will be the master matrix
+possibility_matrix[,,1]
+```
+
+Okay now we know we can create a system of matrixes that will contain every possible number for each space, we just need to build this
+function out to each row and each variable. After we have this matrix it should be easy to wrtie a recursive program that analyzes it to determine the answers.
+
+Below is the full matrix:
+
+```{r}
+containers <- array(dim= c(3,3,9))
+for(n in 1:3){
+  if(n == 1){
+    for(i in 1:3){
+      containers[,,i] <- puzzle[1:3,((3*i)-2):(3*i)]
+    }
+  } else if(n == 2){
+    for(i in 1:3){
+      containers[,,i+3] <- puzzle[4:6,((3*i)-2):(3*i)]
+    }
+  } else{
+    for(i in 1:3){
+      containers[,,i+6] <- puzzle[7:9,((3*i)-2):(3*i)]
+    }
+  }
+}
+#loop for column and row arrays
+columns <- array(dim=c(1,9,9))
+for(n in 1:9){
+  columns[,,n] <- puzzle[1:9, n]
+}
+rows <- array(dim=c(1,9,9))
+for(n in 1:9){
+  rows[,,n] <- puzzle[n, 1:9]
+}
+#checking for a single varible across a row
+possibility_matrix <- array(0,dim=c(9,9,9))
+for(k in 1:9){
+  for(n in 1:9){
+    for(i in 1:9){
+    #spliting into container
+      if(i <= 3 && n <= 3){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,1] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+       
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,1] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        }
+      } else if(i <= 6 && n <= 3){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,2] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+        
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,2] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        }
+      } else if(i <= 9 && n <= 3){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,3] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+        
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,3] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        }
+      } else if(i <= 3 && n <= 6){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,4] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+        
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,4] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        }
+      } else if(i <= 6 && n <= 6){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,5] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+        
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,5] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        } 
+      } else if(i <= 9 && n <= 6){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,6] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+        
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,6] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        } 
+      } else if(i <= 3 && n <= 9){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,7] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+        
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,7] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        }
+      } else if(i <= 6 && n <= 9){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,8] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+        
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,8] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        }
+      } else if(i <= 9 && n <= 9){
+      #first checking container for optimal efficiency
+        if(sum(containers[,,9] == k) == 0){
+        
+          if(puzzle[n,i] == 0){
+          
+            if(sum(rows[,,n] == k) == 0){
+            
+              if(sum(columns[,,i] == k) == 0){
+              
+                possibility_matrix[n,i,k] = k
+              
+              } else if(sum(columns[,,i] == k) == 1){
+              
+                next
+              
+              } else{
+              
+                stop("Error: Multiplicity of a variable has exceeded 1 A")
+              
+              }
+            
+            } else if(sum(rows[,,n] == k) == 1){
+            
+              next
+            
+            } else {
+        
+              stop("Error: Multiplicity of a variable has exceeded 1 B")
+        
+            }
+          
+          } else{
+      
+            next
+      
+          }
+        
+        } else if(sum(containers[,,9] == k) == 1){
+        
+          next
+        
+        } else{
+        
+          stop("Error: Multiplicity of a variable has exceeded 1 C")
+        
+        }
+      }
+    }
+  }
+}
+possibility_matrix
+```
+
+Now that we have this output we can create a function to go ahead and choose numbers 
+that are valid to place. This is based on:
+-if the variable is the only possible variable to place in a spot.
+-if other spaces in an environment (row, column, container) have a possibility of
+placing that variable.
+then we can add those variables to the original puzzle and repeat the process until
+all spaces on the puzzle are filled.
+
+
+```{r}
+new_puzzle <- puzzle
+for(k in 1:9){
+  
+  for(n in 1:9){
+    
+    for(i in 1:9){
+      
+      if(possibility_matrix[n,i,k] > 0){
+        
+        if(i <= 3 && n <= 3){
+        
+          if(sum(possibility_matrix[1:3,1:3,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+          
+        } else if(i <= 6 && n <= 3){
+          
+          if(sum(possibility_matrix[1:3,4:6,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+          
+        } else if(i <= 9 && n <= 3){
+          
+          if(sum(possibility_matrix[1:3,7:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+          
+        } else if(i <= 3 && n <= 6){
+          
+          if(sum(possibility_matrix[4:6,1:3,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+          
+        } else if(i <= 6 && n <= 6){
+          
+          if(sum(possibility_matrix[4:6,4:6,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+        } else if(i <= 9 && n <= 6){
+          
+          if(sum(possibility_matrix[4:6,7:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+        } else if(i <= 3 && n <= 9){
+          
+          if(sum(possibility_matrix[7:9,1:3,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+        } else if(i <= 6 && n <= 9){
+          
+          if(sum(possibility_matrix[7:9,4:6,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+        } else if(i <= 9 && n <= 9){
+          
+          if(sum(possibility_matrix[7:9,7:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[1:9,i,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k 
+            
+          } else if(sum(possibility_matrix[n,1:9,k] == k) == 1){
+            
+            new_puzzle[n,i] <- k
+            
+          } else{
+            
+            next
+            
+          }
+        }
+          
+      } else {
+        
+        next
+        
+      }
+    }
+  }
+  
+}
+new_puzzle
+
+```
